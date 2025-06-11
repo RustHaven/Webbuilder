@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live HTML Coder (Beta)</title>
+  <style>
+    body {
+      font-family: Consolas, 'Courier New', monospace;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+    }
+    #auth {
+      padding: 1rem;
+      background: #252526;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    input, button, select {
+      background: #2d2d2d;
+      color: #d4d4d4;
+      border: 1px solid #555;
+      padding: 0.5rem;
+      font-family: inherit;
+      border-radius: 3px;
+      transition: background-color 0.3s ease;
+    }
+    input:hover, button:hover, select:hover {
+      background-color: #3c3c3c;
+      cursor: pointer;
+    }
+    #user-info {
+      margin-left: auto;
+      color: #4ec9b0;
+      font-weight: bold;
+      user-select: none;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      height: calc(100vh - 110px);
+      border-top: 1px solid #333;
+    }
+    textarea {
+      width: 50%;
+      height: 100%;
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+      border: none;
+      padding: 1rem;
+      font-family: Consolas, monospace;
+      font-size: 14px;
+      resize: none;
+      outline: none;
+    }
+    iframe {
+      width: 50%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+    #settings {
+      padding: 1rem;
+      background: #1e1e1e;
+      display: none;
+      color: #ccc;
+      border-top: 1px solid #333;
+      user-select: none;
+    }
+    label {
+      display: block;
+      margin-top: 0.5rem;
+    }
+    #footer {
+      background: #252526;
+      padding: 0.5rem 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #888;
+      user-select: none;
+    }
+    #linkInfo {
+      background: #007acc;
+      color: white;
+      padding: 8px 12px;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      margin-top: 4px;
+      border-radius: 3px;
+      user-select: none;
+      display: none;
+    }
+    #settings label input, #settings label select {
+      width: 100%;
+      margin-top: 0.25rem;
+      background-color: #2d2d2d;
+      border-radius: 3px;
+      border: 1px solid #555;
+      color: #d4d4d4;
+      padding: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="auth">
+    <button id="googleSignIn">Google Sign In</button>
+    <input id="email" type="email" placeholder="Email" autocomplete="username">
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+    <button id="emailSignUp">Sign Up</button>
+    <button id="emailSignIn">Sign In</button>
+    <button id="resetPassword">Reset Password</button>
+    <button id="signOut">Sign Out</button>
+    <button id="toggleSettings" title="Toggle Settings ⚙️">⚙️</button>
+    <div id="user-info">Not signed in.</div>
+  </div>
+
+  <div id="settings">
+    <h3>Editor Settings</h3>
+    <label>
+      Font Size:
+      <select id="fontSize">
+        <option value="12px">12px</option>
+        <option value="14px" selected>14px</option>
+        <option value="16px">16px</option>
+        <option value="18px">18px</option>
+        <option value="20px">20px</option>
+      </select>
+    </label>
+    <label>
+      Theme:
+      <select id="theme">
+        <option value="dark" selected>Dark</option>
+        <option value="light">Light</option>
+      </select>
+    </label>
+    <label>
+      Discord Link Message:
+      <input type="text" id="discordMessage" value="Discord invite detected: Webbuild - Website build deps. Make websites." />
+    </label>
+  </div>
+
+  <main>
+    <div style="flex:1; display:flex; flex-direction: column;">
+      <textarea id="editor" spellcheck="false"><!DOCTYPE html>
+<html>
+<head>
+  <title>Live Preview</title>
+</head>
+<body>
+  <h1>Hello, World!</h1>
+  <p>Edit HTML on the left to update this preview.</p>
+</body>
+</html></textarea>
+      <div id="linkInfo"></div>
+    </div>
+    <iframe id="preview"></iframe>
+  </main>
+
+  <div id="footer">
+    Live HTML Coder (Beta) — Updates coming soon by Mike.
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      sendPasswordResetEmail,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzEgIU5lzKxxhc7Lh0YfCfI_WbT2hePKU",
+      authDomain: "test-26e52.firebaseapp.com",
+      projectId: "test-26e52",
+      storageBucket: "test-26e52.firebasestorage.app",
+      messagingSenderId: "182043653435",
+      appId: "1:182043653435:web:fe99105ff92315b30af31e",
+      measurementId: "G-7H9EKW7WS3"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const userInfo = document.getElementById("user-info");
+
+    const getInput = (id) => document.getElementById(id).value.trim();
+
+    onAuthStateChanged(auth, (user) => {
+      userInfo.innerText = user ? `Signed in as: ${user.email || user.displayName}` : "Not signed in.";
+    });
+
+    document.getElementById("googleSignIn").onclick = () =>
+      signInWithPopup(auth, provider).catch(err => alert("Google Sign-In Error: " + err.message));
+
+    document.getElementById("emailSignUp").onclick = () => {
+      const email = getInput("email");
+      const password = getInput("password");
+
+      if (!email.includes("@") || !email.includes(".")) return alert("Invalid email format.");
+      if (password.length < 6) return alert("Password must be at least 6 characters.");
+
+      createUserWithEmailAndPassword(auth, email, password)
+        .catch(err => alert("Sign-Up Error: " + err.message));
+    };
+
+    document.getElementById("emailSignIn").onclick = () => {
+      const email = getInput("email");
+      const password = getInput("password");
+
+      if (!email.includes("@") || !email.includes(".")) return alert("Invalid email format.");
+      if (password.length < 6) return alert("Password must be at least 6 characters.");
+
+      signInWithEmailAndPassword(auth, email, password)
+        .catch(err => alert("Sign-In Error: " + err.message));
+    };
+
+    document.getElementById("resetPassword").onclick = () => {
+      const email = getInput("email");
+      if (!email.includes("@") || !email.includes(".")) return alert("Enter a valid email to reset password.");
+
+      sendPasswordResetEmail(auth, email)
+        .then(() => alert("Password reset email sent."))
+        .catch(err => alert("Error: " + err.message));
+    };
+
+    document.getElementById("signOut").onclick = () =>
+      signOut(auth).catch(err => alert("Sign-Out Error: " + err.message));
+
+    document.getElementById("toggleSettings").onclick = () => {
+      const s = document.getElementById("settings");
+      s.style.display = s.style.display === "block" ? "none" : "block";
+    };
+
+    // Warn on leaving page
+    window.addEventListener("beforeunload", (e) => {
+      // Only show warning if user is signed in
+      if (auth.currentUser) {
+        e.preventDefault();
+        e.returnValue = "If you sign in/sign up, your code is saved!";
+      }
+    });
+  </script>
+
+  <script>
+    const editor = document.getElementById("editor");
+    const preview = document.getElementById("preview");
+    const linkInfo = document.getElementById("linkInfo");
+    const discordMessageInput = document.getElementById("discordMessage");
+    const fontSizeSelect = document.getElementById("fontSize");
+    const themeSelect = document.getElementById("theme");
+
+    function updatePreview() {
+      const html = editor.value;
+      const doc = preview.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+    }
+
+    function checkForDiscordLink(text) {
+      const discordInvitePattern = /https?:\/\/(www\.)?discord\.gg\/[a-zA-Z0-9]+/gi;
+      return discordInvitePattern.test(text);
+    }
+
+    function updateLinkInfo() {
+      if (checkForDiscordLink(editor.value)) {
+        linkInfo.textContent = discordMessageInput.value || "Discord invite detected.";
+        linkInfo.style.display = "block";
+      } else {
+        linkInfo.style.display = "none";
+      }
+    }
+
+    editor.addEventListener("input", () => {
+      updatePreview();
+      updateLinkInfo();
+    });
+
+    // Initial update
+    window.onload = () => {
+      updatePreview();
+      updateLinkInfo();
+      // Apply saved font size & theme
+      editor.style.fontSize = fontSizeSelect.value;
+      applyTheme(themeSelect.value);
+    };
+
+    fontSizeSelect.addEventListener("change", (e) => {
+      editor.style.fontSize = e.target.value;
+    });
+
+    themeSelect.addEventListener("change", (e) => {
+      applyTheme(e.target.value);
+    });
+
+    discordMessageInput.addEventListener("input", () => {
+      updateLinkInfo();
+    });
+
+    function applyTheme(theme) {
+      if (theme === "dark") {
+        document.body.style.backgroundColor = "#1e1e1e";
+        document.body.style.color = "#d4d4d4";
+        editor.style.backgroundColor = "#1e1e1e";
+        editor.style.color = "#d4d4d4";
+        preview.style.backgroundColor = "#fff";
+      } else {
+        document.body.style.backgroundColor = "#fff";
+        document.body.style.color = "#000";
+        editor.style.backgroundColor = "#f5f5f5";
+        editor.style.color = "#000";
+        preview.style.backgroundColor = "#fff";
+      }
+    }
+  </script>
+</body>
+</html>
